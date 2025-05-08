@@ -1,3 +1,4 @@
+// src/services/userService.ts
 import axios from "axios";
 import { SignupFormData, SignInFormData } from "../types/User";
 
@@ -14,8 +15,10 @@ export const signup = async (formData: SignupFormData) => {
     email: formData.email,
     password: formData.password,
     image: {
-      url: formData.imageUrl || "",
-      alt: formData.imageAlt || "",
+      url:
+        formData.imageUrl?.trim() ||
+        "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+      alt: formData.imageAlt || "User image",
     },
     address: {
       state: formData.state || "",
@@ -23,9 +26,9 @@ export const signup = async (formData: SignupFormData) => {
       city: formData.city,
       street: formData.street,
       houseNumber: formData.houseNumber,
-      zip: formData.zip || 0,
+      zip: formData.zip ?? 0,
     },
-    isBusiness: formData.biz || false,
+    isBusiness: formData.biz ?? false,
   };
 
   const { data } = await axios.post(`${BASE_URL}/users`, payload);
@@ -34,5 +37,57 @@ export const signup = async (formData: SignupFormData) => {
 
 export const login = async (credentials: SignInFormData) => {
   const { data } = await axios.post(`${BASE_URL}/users/login`, credentials);
+  return data;
+};
+
+export const getUser = async (userId: string, token: string) => {
+  const { data } = await axios.get(`${BASE_URL}/users/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return data;
+};
+
+export const updateUser = async (
+  userId: string,
+  userData: Partial<SignupFormData>,
+  token: string,
+) => {
+  const { data } = await axios.put(`${BASE_URL}/users/${userId}`, userData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return data;
+};
+
+export const getAllUsers = async (token: string) => {
+  const { data } = await axios.get(`${BASE_URL}/users`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return data;
+};
+
+export const deleteUser = async (userId: string, token: string) => {
+  await axios.delete(`${BASE_URL}/users/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const changeBusinessStatus = async (userId: string, token: string) => {
+  const { data } = await axios.patch(
+    `${BASE_URL}/users/${userId}`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
   return data;
 };

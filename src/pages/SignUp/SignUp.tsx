@@ -1,15 +1,20 @@
+// src/pages/SignUp/SignUp.tsx
 import { useForm } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import { signupSchema } from "../../utils/validationSchemas";
 import { SignupFormData } from "../../types/User";
 import { signup } from "../../services/userService";
 import { useNavigate } from "react-router-dom";
-import { Label, TextInput, Button, Checkbox } from "flowbite-react";
+import { Link } from "react-router-dom";
+import { Label, TextInput, Button, Checkbox, Spinner } from "flowbite-react";
 import { useState } from "react";
+import { toast } from "react-toastify";
+import axios from "axios";
 
 const SignUp = () => {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
@@ -21,77 +26,104 @@ const SignUp = () => {
 
   const onSubmit = async (formData: SignupFormData) => {
     try {
-      const payload = {
-        name: {
-          first: formData.first,
-          middle: formData.middle || "",
-          last: formData.last,
-        },
-        phone: formData.phone,
-        email: formData.email,
-        password: formData.password,
-        image: {
-          url:
-            formData.imageUrl?.trim() ||
-            "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-          alt: formData.imageAlt || "User image",
-        },
-        address: {
-          state: formData.state || "",
-          country: formData.country,
-          city: formData.city,
-          street: formData.street,
-          houseNumber: formData.houseNumber,
-          zip: formData.zip ?? 0,
-        },
-        isBusiness: formData.biz ?? false,
-      };
+      setIsSubmitting(true);
+      setServerError("");
 
-      await signup(payload);
+      await signup(formData);
+      toast.success("Registration successful! Please sign in.");
       navigate("/signin");
-    } catch (err: any) {
-      console.error("Signup failed:", err.response?.data || err.message);
-      setServerError("Registration failed. Please try again.");
+    } catch (error: unknown) {
+      let errorMessage = "Registration failed. Please try again.";
+
+      if (axios.isAxiosError(error) && error.response) {
+        console.error("Signup failed:", error.response.data);
+        // בדיקה ספציפית לשגיאות שכיחות
+        if (error.response.status === 400) {
+          // אם יש אובייקט שגיאה מהשרת עם הודעה
+          if (error.response.data?.message) {
+            errorMessage = error.response.data.message;
+          }
+
+          // בדיקה ספציפית אם המשתמש כבר רשום
+          if (
+            typeof error.response.data === "string" &&
+            error.response.data.includes("User already registered")
+          ) {
+            errorMessage =
+              "This email is already registered. Please use a different email or try to sign in.";
+          } else if (
+            error.response.data?.message?.includes("User already registered")
+          ) {
+            errorMessage =
+              "This email is already registered. Please use a different email or try to sign in.";
+          }
+        }
+      } else if (error instanceof Error) {
+        console.error("Signup failed:", error.message);
+      } else {
+        console.error("Signup failed:", error);
+      }
+
+      setServerError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="mx-auto mt-10 max-w-xl rounded bg-white p-6 shadow">
-      <h2 className="mb-4 text-center text-2xl font-semibold">
+    <div className="mx-auto mt-10 max-w-xl rounded bg-white p-6 shadow dark:bg-gray-800">
+      <h2 className="mb-4 text-center text-2xl font-semibold dark:text-white">
         Create Account
       </h2>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {/* NAME */}
-        <TextInput {...register("first")} placeholder="First Name" />
-        {errors.first && (
-          <p className="text-sm text-red-500">{errors.first.message}</p>
-        )}
+        <div>
+          <TextInput {...register("first")} placeholder="First Name" />
+          {errors.first && (
+            <p className="mt-1 text-sm text-red-500">{errors.first.message}</p>
+          )}
+        </div>
+
         <TextInput
           {...register("middle")}
           placeholder="Middle Name (optional)"
         />
-        <TextInput {...register("last")} placeholder="Last Name" />
-        {errors.last && (
-          <p className="text-sm text-red-500">{errors.last.message}</p>
-        )}
+
+        <div>
+          <TextInput {...register("last")} placeholder="Last Name" />
+          {errors.last && (
+            <p className="mt-1 text-sm text-red-500">{errors.last.message}</p>
+          )}
+        </div>
 
         {/* CONTACT */}
-        <TextInput {...register("phone")} placeholder="Phone" />
-        {errors.phone && (
-          <p className="text-sm text-red-500">{errors.phone.message}</p>
-        )}
-        <TextInput {...register("email")} placeholder="Email" />
-        {errors.email && (
-          <p className="text-sm text-red-500">{errors.email.message}</p>
-        )}
-        <TextInput
-          {...register("password")}
-          type="password"
-          placeholder="Password"
-        />
-        {errors.password && (
-          <p className="text-sm text-red-500">{errors.password.message}</p>
-        )}
+        <div>
+          <TextInput {...register("phone")} placeholder="Phone" />
+          {errors.phone && (
+            <p className="mt-1 text-sm text-red-500">{errors.phone.message}</p>
+          )}
+        </div>
+
+        <div>
+          <TextInput {...register("email")} placeholder="Email" />
+          {errors.email && (
+            <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
+          )}
+        </div>
+
+        <div>
+          <TextInput
+            {...register("password")}
+            type="password"
+            placeholder="Password"
+          />
+          {errors.password && (
+            <p className="mt-1 text-sm text-red-500">
+              {errors.password.message}
+            </p>
+          )}
+        </div>
 
         {/* IMAGE */}
         <TextInput
@@ -105,14 +137,43 @@ const SignUp = () => {
 
         {/* ADDRESS */}
         <TextInput {...register("state")} placeholder="State (optional)" />
-        <TextInput {...register("country")} placeholder="Country" />
-        <TextInput {...register("city")} placeholder="City" />
-        <TextInput {...register("street")} placeholder="Street" />
-        <TextInput
-          {...register("houseNumber")}
-          type="number"
-          placeholder="House Number"
-        />
+
+        <div>
+          <TextInput {...register("country")} placeholder="Country" />
+          {errors.country && (
+            <p className="mt-1 text-sm text-red-500">
+              {errors.country.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <TextInput {...register("city")} placeholder="City" />
+          {errors.city && (
+            <p className="mt-1 text-sm text-red-500">{errors.city.message}</p>
+          )}
+        </div>
+
+        <div>
+          <TextInput {...register("street")} placeholder="Street" />
+          {errors.street && (
+            <p className="mt-1 text-sm text-red-500">{errors.street.message}</p>
+          )}
+        </div>
+
+        <div>
+          <TextInput
+            {...register("houseNumber")}
+            type="number"
+            placeholder="House Number"
+          />
+          {errors.houseNumber && (
+            <p className="mt-1 text-sm text-red-500">
+              {errors.houseNumber.message}
+            </p>
+          )}
+        </div>
+
         <TextInput
           {...register("zip")}
           type="number"
@@ -121,14 +182,51 @@ const SignUp = () => {
 
         {/* BIZ */}
         <div className="flex items-center gap-2">
-          <Checkbox {...register("biz")} />
-          <Label htmlFor="biz">Register as Business</Label>
+          <Checkbox id="biz" {...register("biz")} />
+          <Label htmlFor="biz" className="cursor-pointer">
+            Register as Business
+          </Label>
         </div>
 
         {/* SERVER ERROR */}
-        {serverError && <p className="text-sm text-red-600">{serverError}</p>}
+        {serverError && (
+          <div className="rounded-md bg-red-50 p-4 text-sm text-red-600">
+            <p>{serverError}</p>
+            {serverError.includes("already registered") && (
+              <p className="mt-2">
+                <Link
+                  to="/signin"
+                  className="font-medium text-blue-600 hover:underline"
+                >
+                  Sign in instead
+                </Link>
+              </p>
+            )}
+          </div>
+        )}
 
-        <Button type="submit">Sign Up</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Spinner size="sm" className="mr-2" />
+              Registering...
+            </>
+          ) : (
+            "Sign Up"
+          )}
+        </Button>
+
+        <div className="mt-4 text-center">
+          <span className="text-gray-600 dark:text-gray-400">
+            Already have an account?{" "}
+          </span>
+          <Link
+            to="/signin"
+            className="font-medium text-blue-600 hover:underline dark:text-blue-500"
+          >
+            Sign In
+          </Link>
+        </div>
       </form>
     </div>
   );

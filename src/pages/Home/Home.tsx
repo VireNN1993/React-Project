@@ -5,11 +5,11 @@ import { RootState } from "../../redux/store";
 import { setAllCards } from "../../redux/slices/cardsSlice";
 import { CardType } from "../../types/Card";
 import { Spinner, TextInput, Button } from "flowbite-react";
-import { FaSearch } from "react-icons/fa";
 import axios from "axios";
 import { BASE_URL } from "../../services/userService";
 import { toast } from "react-toastify";
-import CardItem from "../../components/CardItem.tsx"; // נניח שיש לך כבר קומפוננטה כזו
+import CardItem from "../../components/CardItem";
+import { FaSearch } from "react-icons/fa";
 
 const CARDS_PER_PAGE = 8;
 
@@ -227,7 +227,6 @@ const Home = () => {
             color="light"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="px-3 py-1"
           >
             &laquo;
           </Button>
@@ -239,7 +238,6 @@ const Home = () => {
                 key={index}
                 color={currentPage === page ? "blue" : "light"}
                 onClick={() => handlePageChange(page)}
-                className="px-3 py-1"
               >
                 {page}
               </Button>
@@ -255,7 +253,6 @@ const Home = () => {
             color="light"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="px-3 py-1"
           >
             &raquo;
           </Button>
