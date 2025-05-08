@@ -21,9 +21,36 @@ const SignUp = () => {
 
   const onSubmit = async (formData: SignupFormData) => {
     try {
-      await signup(formData); // נשלח כפורמט מלא מהפונקציה עצמה
+      const payload = {
+        name: {
+          first: formData.first,
+          middle: formData.middle || "",
+          last: formData.last,
+        },
+        phone: formData.phone,
+        email: formData.email,
+        password: formData.password,
+        image: {
+          url:
+            formData.imageUrl?.trim() ||
+            "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+          alt: formData.imageAlt || "User image",
+        },
+        address: {
+          state: formData.state || "",
+          country: formData.country,
+          city: formData.city,
+          street: formData.street,
+          houseNumber: formData.houseNumber,
+          zip: formData.zip ?? 0,
+        },
+        isBusiness: formData.biz ?? false,
+      };
+
+      await signup(payload);
       navigate("/signin");
-    } catch {
+    } catch (err: any) {
+      console.error("Signup failed:", err.response?.data || err.message);
       setServerError("Registration failed. Please try again.");
     }
   };

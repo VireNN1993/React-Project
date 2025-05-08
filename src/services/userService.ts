@@ -1,7 +1,7 @@
 import axios from "axios";
 import { SignupFormData, SignInFormData } from "../types/User";
 
-const BASE_URL = "https://monkfish-app-z9uza.ondigitalocean.app/bcard2";
+export const BASE_URL = "https://monkfish-app-z9uza.ondigitalocean.app/bcard2";
 
 export const signup = async (formData: SignupFormData) => {
   const payload = {
