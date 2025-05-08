@@ -1,3 +1,4 @@
+// הקלף המלא כפי שמתקבל מהשרת (כולל _id, likes, user_id, bizNumber)
 export type CardType = {
   _id: string;
   title: string;
@@ -22,6 +23,8 @@ export type CardType = {
   likes: string[];
   user_id: string;
 };
+
+// הקלטים שמגיעים מהטופס ליצירת קלף
 export type CreateCardFormData = {
   title: string;
   subtitle: string;

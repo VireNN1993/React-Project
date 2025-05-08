@@ -1,3 +1,4 @@
+// טיפוס משתמש מלא כפי שמוחזר מהשרת
 export type UserType = {
   _id: string;
   name: {
@@ -23,6 +24,8 @@ export type UserType = {
   isAdmin: boolean;
   isBusiness: boolean;
 };
+
+// טיפוס לטופס הרשמה - מה שנשלח לשרת
 export type SignupFormData = {
   first: string;
   middle?: string;
@@ -38,5 +41,5 @@ export type SignupFormData = {
   street: string;
   houseNumber: number;
   zip?: number;
-  biz?: boolean; // בשרת זה מתורגם ל־isBusiness
+  biz?: boolean; // שדה זה נשלח כ-isBusiness
 };
