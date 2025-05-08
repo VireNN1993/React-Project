@@ -38,7 +38,7 @@ export type SignupFormData = {
   street: string;
   houseNumber: number;
   zip?: number;
-  biz?: boolean; // שדה שמומר ל־isBusiness ב־API
+  biz?: boolean;
 };
 
 export type SignInFormData = {
