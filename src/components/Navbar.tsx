@@ -51,17 +51,14 @@ const AppNavbar = () => {
       {/* שורת החיפוש */}
       <div className="mx-4 hidden max-w-md flex-grow md:block">
         <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <span className="text-gray-500">
-              <FaSearch />
-            </span>
-          </div>
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"></div>
           <TextInput
             type="search"
             placeholder="Search..."
             value={searchTerm}
             onChange={handleSearch}
             className="w-full pl-10"
+            rightIcon={FaSearch}
           />
         </div>
       </div>
