@@ -1,65 +1,125 @@
-// src/auth/AuthProvider.tsx
-import { useEffect } from "react";
+// src/pages/SignIn/SignIn.tsx
+import { useForm } from "react-hook-form";
+import { joiResolver } from "@hookform/resolvers/joi";
+import { signinSchema } from ".././utils/validationSchemas";
+import { SignInFormData, UserType } from ".././types/User";
+import { login } from ".././services/userService";
+import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { setUser } from "../redux/slices/userSlice";
+import { setUser } from ".././redux/slices/userSlice";
+import { TextInput, Button, Spinner } from "flowbite-react";
+import { useState } from "react";
 import { jwtDecode } from "jwt-decode";
-import { UserType } from "../types/User";
+import { toast } from "react-toastify";
 import axios from "axios";
 
-interface AuthProviderProps {
-  children: React.ReactNode;
-}
-
-const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+const SignIn = () => {
+  const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [serverError, setServerError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const initAuth = () => {
-      try {
-        const token = localStorage.getItem("token");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignInFormData>({
+    resolver: joiResolver(signinSchema),
+  });
 
-        if (!token) {
-          return;
-        }
+  const onSubmit = async (data: SignInFormData) => {
+    try {
+      setIsLoading(true);
+      setServerError("");
 
-        try {
-          // פענוח הטוקן לפי טיפוס UserType הקיים
-          const decoded = jwtDecode<UserType>(token);
+      // ניקוי כל הטוקנים הקיימים
+      localStorage.removeItem("token");
+      delete axios.defaults.headers.common["Authorization"];
 
-          // שימוש ב-type assertion להוספת השדות של JWT
-          const jwtDecoded = decoded as UserType & {
-            exp?: number;
-            iat?: number;
-          };
+      // ניסיון התחברות
+      const token = await login(data);
 
-          // בדיקת תוקף הטוקן (אופציונלי)
-          const currentTime = Date.now() / 1000;
-          if (jwtDecoded.exp && jwtDecoded.exp < currentTime) {
-            console.log("Token expired, logging out");
-            localStorage.removeItem("token");
-            return;
-          }
-
-          // הגדרת טוקן כדיפולט לכל בקשות axios
-          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-          // עדכון סטייט Redux
-          dispatch(setUser(decoded));
-
-          console.log("User authenticated from stored token");
-        } catch (error) {
-          console.error("Error decoding token:", error);
-          localStorage.removeItem("token");
-        }
-      } catch (error) {
-        console.error("Auth initialization error:", error);
+      if (!token) {
+        throw new Error("No token received from server");
       }
-    };
 
-    initAuth();
-  }, [dispatch]);
+      // שמירת הטוקן
+      localStorage.setItem("token", token);
 
-  return <>{children}</>;
+      // פענוח הטוקן
+      const decodedUser = jwtDecode<UserType>(token);
+
+      // לוג לדיבוג
+      console.log("Login successful:", {
+        token: token.substring(0, 15) + "...",
+        user: {
+          id: decodedUser._id,
+          name: decodedUser.name?.first,
+          isAdmin: decodedUser.isAdmin,
+          isBusiness: decodedUser.isBusiness,
+        },
+      });
+
+      // הגדרת הדר Authorization לבקשות עתידיות
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      // עדכון מצב המשתמש ב-Redux
+      dispatch(setUser(decodedUser));
+
+      toast.success(`Welcome back, ${decodedUser.name?.first || "User"}`);
+      navigate("/");
+    } catch (error) {
+      console.error("Login failed:", error);
+
+      // טיפול משופר בשגיאות
+      if (axios.isAxiosError(error)) {
+        setServerError(
+          error.response?.data?.message || "Invalid email or password",
+        );
+      } else if (error instanceof Error) {
+        setServerError(error.message);
+      } else {
+        setServerError("Invalid email or password");
+      }
+
+      toast.error("Login failed. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto mt-10 max-w-md rounded bg-white p-6 shadow dark:bg-gray-800">
+      <h2 className="mb-4 text-center text-2xl font-semibold dark:text-white">
+        Sign In
+      </h2>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <TextInput {...register("email")} placeholder="Email" />
+        {errors.email && (
+          <p className="text-sm text-red-500">{errors.email.message}</p>
+        )}
+        <TextInput
+          {...register("password")}
+          type="password"
+          placeholder="Password"
+        />
+        {errors.password && (
+          <p className="text-sm text-red-500">{errors.password.message}</p>
+        )}
+        {serverError && <p className="text-sm text-red-600">{serverError}</p>}
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Spinner size="sm" className="mr-2" />
+              Signing in...
+            </>
+          ) : (
+            "Login"
+          )}
+        </Button>
+      </form>
+    </div>
+  );
 };
 
-export default AuthProvider;
+export default SignIn;

@@ -1,10 +1,10 @@
-// src/pages/AdminPanel/AdminPanel.tsx - גרסה מעודכנת מאוד
+// src/pages/AdminPanel/AdminPanel.tsx
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
 import { Spinner, Button, Checkbox, Alert } from "flowbite-react";
 import axios from "axios";
-import { BASE_URL } from "../../services/userService"; // ייבוא רק של BASE_URL, לא של ADMIN_API_URL
+import { BASE_URL } from "../../services/userService";
 import { toast } from "react-toastify";
 import { FaTrash, FaUserTie, FaUser, FaRedo } from "react-icons/fa";
 import { jwtDecode } from "jwt-decode";
@@ -28,20 +28,43 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [users, setUsers] = useState<UserData[]>([]);
-  const { userData, isAdmin } = useSelector((state: RootState) => state.user);
+  const { userData, isAdmin, isLoggedIn } = useSelector(
+    (state: RootState) => state.user,
+  );
   const [retryCount, setRetryCount] = useState(0);
 
   // פונקציה לבדיקת תקפות הטוקן
   const checkToken = () => {
     const token = localStorage.getItem("token");
-    if (!token) return false;
+    if (!token) {
+      console.error("No token found in localStorage");
+      return false;
+    }
 
     try {
       const decoded = jwtDecode<any>(token);
+
+      // דיבוג: הדפס פרטי טוקן
+      console.log("Token check in AdminPanel:", {
+        exp: decoded.exp
+          ? new Date(decoded.exp * 1000).toLocaleString()
+          : "No expiration",
+        iat: decoded.iat
+          ? new Date(decoded.iat * 1000).toLocaleString()
+          : "No issued at",
+        isAdmin: decoded.isAdmin,
+        id: decoded._id,
+      });
+
       const currentTime = Date.now() / 1000;
 
       if (decoded.exp && decoded.exp < currentTime) {
-        console.log("Token expired");
+        console.error("Token expired");
+        return false;
+      }
+
+      if (!decoded.isAdmin) {
+        console.error("User is not an admin");
         return false;
       }
 
@@ -52,11 +75,18 @@ const AdminPanel = () => {
     }
   };
 
-  // פונקציה לטעינת המשתמשים - משתמשת ישירות ב-BASE_URL
+  // פונקציה לטעינת המשתמשים
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError("");
+
+      // בדיקה של מצב המשתמש ב-Redux
+      console.log("Redux user state:", {
+        isLoggedIn,
+        isAdmin,
+        userId: userData?._id,
+      });
 
       // בדיקה שיש טוקן
       const token = localStorage.getItem("token");
@@ -67,7 +97,9 @@ const AdminPanel = () => {
 
       // בדוק האם הטוקן תקף
       if (!checkToken()) {
-        setError("Your session has expired. Please log in again.");
+        setError(
+          "Authentication failed. You may need to log in again or you don't have admin privileges.",
+        );
         localStorage.removeItem("token");
         return;
       }
@@ -76,16 +108,19 @@ const AdminPanel = () => {
       console.log("API URL:", `${BASE_URL}/users`);
 
       try {
-        // קריאה ישירה ל-API עם BASE_URL
-        const { data } = await axios.get(`${BASE_URL}/users`, {
+        // ניסיון קריאה ישירה ב-Axios
+        const response = await axios.get(`${BASE_URL}/users`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        console.log(`Loaded ${data.length} users successfully`);
-        setUsers(data);
+
+        console.log("API Response:", response.status, response.statusText);
+        console.log(`Loaded ${response.data.length} users successfully`);
+
+        setUsers(response.data);
       } catch (apiError) {
-        console.error("API Error:", apiError);
+        console.error("Direct API call error:", apiError);
         throw apiError;
       }
     } catch (error) {
@@ -131,6 +166,19 @@ const AdminPanel = () => {
 
   // טעינת המשתמשים בעת טעינת הדף
   useEffect(() => {
+    // בדיקת מצב המשתמש בעת טעינת הקומפוננטה
+    console.log("AdminPanel mounted, user state:", { isLoggedIn, isAdmin });
+
+    // בדיקת טוקן בלוקל סטורג'
+    const token = localStorage.getItem("token");
+    console.log("Token exists:", !!token);
+
+    if (!isLoggedIn) {
+      setError("You must be logged in to access this page");
+      setLoading(false);
+      return;
+    }
+
     if (!isAdmin) {
       setError("You don't have administrator privileges");
       setLoading(false);
@@ -138,10 +186,14 @@ const AdminPanel = () => {
     }
 
     fetchUsers();
-  }, [isAdmin, retryCount]);
+  }, [isLoggedIn, isAdmin, retryCount]);
 
   // פונקציה לניסיון מחדש
   const handleRetry = () => {
+    // בדיקת טוקן בפעם נוספת
+    const token = localStorage.getItem("token");
+    console.log("Retrying with token:", !!token);
+
     setRetryCount((prev) => prev + 1);
   };
 
@@ -153,7 +205,6 @@ const AdminPanel = () => {
         return;
       }
 
-      // השתמש ב-BASE_URL ישירות
       await axios.patch(
         `${BASE_URL}/users/${userId}`,
         {},
@@ -203,7 +254,6 @@ const AdminPanel = () => {
         return;
       }
 
-      // השתמש ב-BASE_URL ישירות
       await axios.delete(`${BASE_URL}/users/${userId}`, {
         headers: {
           Authorization: `Bearer ${token}`,

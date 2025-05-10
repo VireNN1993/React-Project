@@ -1,13 +1,9 @@
-// src/services/userService.ts - גרסה מלאה
+// src/services/userService.ts
 import axios from "axios";
 import { SignupFormData, SignInFormData } from "../types/User";
 
-// הכתובת המקורית עבור רוב הפעולות באפליקציה
+// כתובת ה-API עבור כל הפעולות
 export const BASE_URL = "https://monkfish-app-z9uza.ondigitalocean.app/bcard2";
-
-// כתובת חדשה עבור פעולות ניהול
-export const ADMIN_API_URL =
-  "https://monkfish-app-z9uza.ondigitalocean.app/api/v1";
 
 export const signup = async (formData: SignupFormData) => {
   const payload = {
@@ -67,9 +63,9 @@ export const updateUser = async (
   return data;
 };
 
-// פונקציות ניהול עם ה-URL החדש
+// פונקציה לקבלת כל המשתמשים
 export const getAllUsers = async (token: string) => {
-  const { data } = await axios.get(`${ADMIN_API_URL}/users`, {
+  const { data } = await axios.get(`${BASE_URL}/users`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -85,33 +81,9 @@ export const deleteUser = async (userId: string, token: string) => {
   });
 };
 
-export const deleteUserAdmin = async (userId: string, token: string) => {
-  await axios.delete(`${ADMIN_API_URL}/users/${userId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-};
-
 export const changeBusinessStatus = async (userId: string, token: string) => {
   const { data } = await axios.patch(
     `${BASE_URL}/users/${userId}`,
-    {},
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
-  return data;
-};
-
-export const changeBusinessStatusAdmin = async (
-  userId: string,
-  token: string,
-) => {
-  const { data } = await axios.patch(
-    `${ADMIN_API_URL}/users/${userId}`,
     {},
     {
       headers: {
