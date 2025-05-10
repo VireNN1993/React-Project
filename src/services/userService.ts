@@ -2,7 +2,6 @@
 import axios from "axios";
 import { SignupFormData, SignInFormData } from "../types/User";
 
-// כתובת ה-API עבור כל הפעולות
 export const BASE_URL = "https://monkfish-app-z9uza.ondigitalocean.app/bcard2";
 
 export const signup = async (formData: SignupFormData) => {
@@ -63,7 +62,6 @@ export const updateUser = async (
   return data;
 };
 
-// פונקציה לקבלת כל המשתמשים
 export const getAllUsers = async (token: string) => {
   const { data } = await axios.get(`${BASE_URL}/users`, {
     headers: {

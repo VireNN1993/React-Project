@@ -2,12 +2,11 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
-import { Spinner, Button, Checkbox, Alert } from "flowbite-react";
+import { Spinner, Button, Checkbox } from "flowbite-react";
 import axios from "axios";
 import { BASE_URL } from "../../services/userService";
 import { toast } from "react-toastify";
-import { FaTrash, FaUserTie, FaUser, FaRedo } from "react-icons/fa";
-import { jwtDecode } from "jwt-decode";
+import { FaTrash, FaUserTie, FaUser } from "react-icons/fa";
 
 // טיפוס למשתמש כפי שמוחזר מה-API
 interface UserData {
@@ -28,182 +27,48 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [users, setUsers] = useState<UserData[]>([]);
-  const { userData, isAdmin, isLoggedIn } = useSelector(
-    (state: RootState) => state.user,
-  );
-  const [retryCount, setRetryCount] = useState(0);
+  const { userData } = useSelector((state: RootState) => state.user);
 
-  // פונקציה לבדיקת תקפות הטוקן
-  const checkToken = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("No token found in localStorage");
-      return false;
-    }
-
-    try {
-      const decoded = jwtDecode<any>(token);
-
-      // דיבוג: הדפס פרטי טוקן
-      console.log("Token check in AdminPanel:", {
-        exp: decoded.exp
-          ? new Date(decoded.exp * 1000).toLocaleString()
-          : "No expiration",
-        iat: decoded.iat
-          ? new Date(decoded.iat * 1000).toLocaleString()
-          : "No issued at",
-        isAdmin: decoded.isAdmin,
-        id: decoded._id,
-      });
-
-      const currentTime = Date.now() / 1000;
-
-      if (decoded.exp && decoded.exp < currentTime) {
-        console.error("Token expired");
-        return false;
-      }
-
-      if (!decoded.isAdmin) {
-        console.error("User is not an admin");
-        return false;
-      }
-
-      return true;
-    } catch (e) {
-      console.error("Invalid token:", e);
-      return false;
-    }
-  };
-
-  // פונקציה לטעינת המשתמשים
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      // בדיקה של מצב המשתמש ב-Redux
-      console.log("Redux user state:", {
-        isLoggedIn,
-        isAdmin,
-        userId: userData?._id,
-      });
-
-      // בדיקה שיש טוקן
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Authentication required. Please log in again.");
-        return;
-      }
-
-      // בדוק האם הטוקן תקף
-      if (!checkToken()) {
-        setError(
-          "Authentication failed. You may need to log in again or you don't have admin privileges.",
-        );
-        localStorage.removeItem("token");
-        return;
-      }
-
-      console.log("Fetching users from API");
-      console.log("API URL:", `${BASE_URL}/users`);
-
+  useEffect(() => {
+    const fetchUsers = async () => {
       try {
-        // ניסיון קריאה ישירה ב-Axios
-        const response = await axios.get(`${BASE_URL}/users`, {
+        setLoading(true);
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+          setError("Authentication required");
+          return;
+        }
+
+        const { data } = await axios.get<UserData[]>(`${BASE_URL}/users`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
-        console.log("API Response:", response.status, response.statusText);
-        console.log(`Loaded ${response.data.length} users successfully`);
-
-        setUsers(response.data);
-      } catch (apiError) {
-        console.error("Direct API call error:", apiError);
-        throw apiError;
-      }
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-
-      if (axios.isAxiosError(error)) {
-        console.error("Axios error details:", {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message,
-        });
-
-        if (error.response?.status === 401) {
-          setError(
-            "Authentication failed. Your session may have expired. Please log in again.",
-          );
-          localStorage.removeItem("token");
-        } else if (error.response?.status === 403) {
-          setError(
-            "You don't have permission to access user data. Admin privileges required.",
-          );
-        } else if (error.response?.status === 404) {
-          setError("User data endpoint not found. The API may have changed.");
-        } else if (error.response?.status === 500) {
-          setError("Server error. Please try again later.");
-        } else if (error.code === "ECONNABORTED") {
-          setError("Request timed out. The server might be busy or down.");
-        } else {
+        setUsers(data);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+        if (axios.isAxiosError(error)) {
           setError(error.response?.data?.message || "Failed to load users");
+        } else if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError("An unexpected error occurred");
         }
-      } else if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("An unexpected error occurred");
+        toast.error("Could not load users. Please try again later.");
+      } finally {
+        setLoading(false);
       }
-
-      toast.error("Could not load users. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // טעינת המשתמשים בעת טעינת הדף
-  useEffect(() => {
-    // בדיקת מצב המשתמש בעת טעינת הקומפוננטה
-    console.log("AdminPanel mounted, user state:", { isLoggedIn, isAdmin });
-
-    // בדיקת טוקן בלוקל סטורג'
-    const token = localStorage.getItem("token");
-    console.log("Token exists:", !!token);
-
-    if (!isLoggedIn) {
-      setError("You must be logged in to access this page");
-      setLoading(false);
-      return;
-    }
-
-    if (!isAdmin) {
-      setError("You don't have administrator privileges");
-      setLoading(false);
-      return;
-    }
+    };
 
     fetchUsers();
-  }, [isLoggedIn, isAdmin, retryCount]);
-
-  // פונקציה לניסיון מחדש
-  const handleRetry = () => {
-    // בדיקת טוקן בפעם נוספת
-    const token = localStorage.getItem("token");
-    console.log("Retrying with token:", !!token);
-
-    setRetryCount((prev) => prev + 1);
-  };
+  }, []);
 
   const handleToggleBusiness = async (userId: string, isBusiness: boolean) => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Authentication required. Please log in again.");
-        return;
-      }
+      if (!token) return;
 
       await axios.patch(
         `${BASE_URL}/users/${userId}`,
@@ -249,10 +114,7 @@ const AdminPanel = () => {
 
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Authentication required. Please log in again.");
-        return;
-      }
+      if (!token) return;
 
       await axios.delete(`${BASE_URL}/users/${userId}`, {
         headers: {
@@ -269,7 +131,6 @@ const AdminPanel = () => {
     }
   };
 
-  // תצוגת טעינה
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -278,67 +139,32 @@ const AdminPanel = () => {
     );
   }
 
-  // תצוגת שגיאה עם כפתור ניסיון מחדש מודגש
   if (error) {
     return (
       <div className="container mx-auto mt-10 p-4 text-center">
-        <Alert color="failure" className="mb-4">
-          <div className="flex flex-col items-center">
-            <h3 className="text-lg font-medium">Error Loading Users</h3>
-            <p className="mt-2">{error}</p>
-          </div>
-        </Alert>
-
-        <Button
-          onClick={handleRetry}
-          color="blue"
-          className="mt-4 flex items-center gap-2"
-        >
-          <FaRedo /> Retry Loading Users
-        </Button>
-
-        <div className="mt-8 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-          <p className="font-bold">Troubleshooting Tips:</p>
-          <ul className="mt-2 list-disc pl-5">
-            <li>Check your internet connection</li>
-            <li>Make sure the server is online</li>
-            <li>Try logging out and logging back in</li>
-            <li>Clear your browser cache</li>
-            <li>Contact system administrator if the issue persists</li>
-          </ul>
+        <div className="mb-4 rounded-lg bg-red-100 p-4 text-red-700">
+          <p className="font-medium">Error</p>
+          <p>{error}</p>
         </div>
+        <Button onClick={() => window.location.reload()}>Retry</Button>
       </div>
     );
   }
 
-  // תצוגת רשימת המשתמשים
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 flex flex-col items-start justify-between sm:flex-row sm:items-center">
-        <h1 className="mb-4 text-3xl font-bold text-gray-800 sm:mb-0 dark:text-white">
-          User Management
-        </h1>
-
-        <Button
-          onClick={handleRetry}
-          color="light"
-          className="flex items-center gap-2"
-        >
-          <FaRedo /> Refresh
-        </Button>
-      </div>
+      <h1 className="mb-8 text-3xl font-bold text-gray-800 dark:text-white">
+        User Management
+      </h1>
 
       {users.length === 0 ? (
-        <div className="rounded-lg bg-gray-50 p-10 text-center dark:bg-gray-800">
+        <div className="text-center">
           <p className="text-lg text-gray-600 dark:text-gray-300">
             No users found in the system.
           </p>
-          <Button onClick={handleRetry} color="blue" className="mt-4">
-            Try Again
-          </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg shadow-md">
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-500 dark:text-gray-400">
             <thead className="bg-gray-50 text-xs text-gray-700 uppercase dark:bg-gray-700 dark:text-gray-400">
               <tr>

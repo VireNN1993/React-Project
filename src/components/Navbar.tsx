@@ -8,13 +8,11 @@ import {
   TextInput,
 } from "flowbite-react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../redux/store";
 import { clearUser } from "../redux/slices/userSlice";
 import { setSearchTerm } from "../redux/slices/cardsSlice";
 import { FaSearch } from "react-icons/fa";
-import { toast } from "react-toastify";
 
 const AppNavbar = () => {
   const { isLoggedIn, isBusiness, isAdmin, userData } = useSelector(
@@ -24,22 +22,10 @@ const AppNavbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // בקומפוננטת Navbar.tsx, עדכון הפונקציה handleLogout
   const handleLogout = () => {
-    // ניקוי הטוקן מהלוקל סטורג'
     localStorage.removeItem("token");
-
-    // ניקוי הדר Authorization מאקסיוס
-    delete axios.defaults.headers.common["Authorization"];
-
-    // ניקוי מצב המשתמש ב-Redux
     dispatch(clearUser());
-
-    // ניווט לדף הבית
     navigate("/");
-
-    // הודעה למשתמש
-    toast.info("You have been logged out");
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
